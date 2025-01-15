@@ -1,62 +1,35 @@
-import wifi
-import socketpool
-import time
+#!/usr/bin/env python3
 
-# Define the Access Point (AP) SSID and password
-SSID = "RPI5-AP"  # Replace with your desired SSID
-PASSWORD = "12345678"  # Replace with your desired password
+import socket
 
-# Start Wi-Fi in Access Point mode
-wifi.radio.start_ap(ssid=SSID, password=PASSWORD)
-print(f"Access Point started with SSID: {SSID}, IP: {wifi.radio.ipv4_address_ap}")
+HOST = ''       # Listen on all interfaces (0.0.0.0)
+PORT = 8000     # Same port you used in your ESP32 code
 
-# Create a socket pool
-pool = socketpool.SocketPool(wifi.radio)
-server_sock = pool.socket(pool.AF_INET, pool.SOCK_STREAM)
+def main():
+    # Create a TCP/IP socket
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind((HOST, PORT))
+        s.listen(1)
+        print(f"Listening on {HOST}:{PORT} ...")
 
-# Bind and listen on a port
-PORT = 8000
-server_sock.bind(("0.0.0.0", PORT))
-server_sock.listen(1)
-print(f"Listening for connections on port {PORT}...")
+        while True:
+            # Wait for a client (ESP32, etc.) to connect
+            conn, addr = s.accept()
+            print("Connected by", addr)
+            with conn:
+                while True:
+                    data = conn.recv(1024)
+                    if not data:
+                        # Connection closed by client
+                        print("Client disconnected.")
+                        break
+                    # Decode/print the data
+                    message = data.decode('utf-8').strip()
+                    print("Received:", message)
 
-try:
-    # Wait for a client to connect
-    conn, addr = server_sock.accept()
-    print(f"Connection from {addr}")
+                    # Optionally send a response back
+                    response = f"Hello from RPi5! You said: {message}\n"
+                    conn.sendall(response.encode('utf-8'))
 
-    while True:
-        # Get user input for X, Y coordinates
-        user_input = input("Enter X,Y coordinates (or type 'close' to end): ").strip()
-
-        if user_input.lower() == "close":
-            print("Closing connection...")
-            break
-
-        try:
-            # Parse and validate input
-            x_str, y_str = user_input.split(",")
-            x = int(x_str.strip())
-            y = int(y_str.strip())
-
-            # Ensure X and Y are within the expected range
-            x = max(-255, min(255, x))
-            y = max(-255, min(255, y))
-
-            # Send X, Y coordinates to the client
-            message = f"{x},{y}\n"
-            conn.send(message.encode())
-            print(f"Sent: {message.strip()}")
-
-        except ValueError:
-            print("Invalid input. Please enter coordinates as 'X,Y'")
-
-        time.sleep(1)
-
-except OSError as e:
-    print(f"Socket error: {e}")
-except Exception as e:
-    print(f"Error: {e}")
-finally:
-    conn.close()
-    print("Connection closed.")
+if __name__ == "__main__":
+    main()
