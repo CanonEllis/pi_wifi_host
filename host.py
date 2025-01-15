@@ -55,10 +55,3 @@ finally:
         conn.close()
     server_sock.close()
     print("Server shut down.")
-
---
-Canon Ellis | Upper School Computer Science Instructor
-St. Stephen’s Episcopal School
-6500 St. Stephen’s Drive, Austin, Texas 78746
-512.327.1213
-www.sstx.org
