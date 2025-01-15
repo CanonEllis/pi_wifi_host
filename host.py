@@ -1,22 +1,29 @@
-import socket
+import wifi
+import socketpool
 import time
 
-# Raspberry Pi Network Configuration
-HOST = "0.0.0.0"  # Listen on all network interfaces
-PORT = 8000       # Port number for the server
+# Define the Access Point (AP) SSID and password
+SSID = "RPI5-AP"  # Replace with your desired SSID
+PASSWORD = "12345678"  # Replace with your desired password
 
-# Create a socket
-server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# Start Wi-Fi in Access Point mode
+wifi.radio.start_ap(ssid=SSID, password=PASSWORD)
+print(f"Access Point started with SSID: {SSID}, IP: {wifi.radio.ipv4_address_ap}")
+
+# Create a socket pool
+pool = socketpool.SocketPool(wifi.radio)
+server_sock = pool.socket(pool.AF_INET, pool.SOCK_STREAM)
+
+# Bind and listen on a port
+PORT = 8000
+server_sock.bind(("0.0.0.0", PORT))
+server_sock.listen(1)
+print(f"Listening for connections on port {PORT}...")
 
 try:
-    # Bind the socket to the host and port
-    server_sock.bind((HOST, PORT))
-    server_sock.listen(1)
-    print(f"Server listening on {HOST}:{PORT}...")
-
     # Wait for a client to connect
     conn, addr = server_sock.accept()
-    print(f"Connection established with {addr}")
+    print(f"Connection from {addr}")
 
     while True:
         # Get user input for X, Y coordinates
@@ -38,7 +45,7 @@ try:
 
             # Send X, Y coordinates to the client
             message = f"{x},{y}\n"
-            conn.sendall(message.encode())
+            conn.send(message.encode())
             print(f"Sent: {message.strip()}")
 
         except ValueError:
@@ -51,7 +58,5 @@ except OSError as e:
 except Exception as e:
     print(f"Error: {e}")
 finally:
-    if 'conn' in locals():
-        conn.close()
-    server_sock.close()
-    print("Server shut down.")
+    conn.close()
+    print("Connection closed.")
